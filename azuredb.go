@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/microsoft/go-mssqldb/azuread"
-	"go.k6.io/k6/js/modules"
+	// "go.k6.io/k6/js/modules"
 )
 
 // init is called by the Go runtime at application startup.
@@ -14,6 +14,9 @@ func init() {
 }
 
 type AzureDB struct {}
+type InsertResult struct {
+	ID int64
+}
 
 func connectDatabase(connectionString string) (*sql.DB, error) {
 	db, err := sql.Open(
@@ -42,22 +45,14 @@ func (az *AzureDB) Insert(connectionString string, rawQueries []string) ([]int64
 	insertedIds := []int64 {}
 
 	for _, rawQuery := range rawQueries {
-		stmt, err := db.Prepare(rawQuery)
-		if err != nil {
+		var insertResult InsertResult
+		row := db.QueryRow(rawQuery)
+		
+		if err := row.Scan(&insertResult.ID); err != nil {
 			log.Fatal(err)
 		}
 
-		result, err := stmt.Exec()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		lastId, err := result.LastInsertId()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		insertedIds = append(insertedIds, lastId)
+		insertedIds = append(insertedIds, insertResult.ID)
 	}
 
 	return insertedIds, err
